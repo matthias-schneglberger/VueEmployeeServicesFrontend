@@ -7,7 +7,6 @@
           :key="index"
         ></v-divider>
     </v-list>
-    <Employee/>
   </v-container>
 </template>
 

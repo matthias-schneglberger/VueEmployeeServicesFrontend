@@ -35,7 +35,13 @@
               <span class="headline">Services von: {{ name }}</span>
             </v-card-title>
             <v-card-text>
-              test
+              <v-list v-for="(service, index) in services" v-bind:key="service.id">
+                <Service :name="service.name" :date="service.date" :latitude="service.latitude" :longitude="service.longitude" :service-id="service.id"/>
+                <v-divider
+                  v-if="index < services.length - 1"
+                  :key="index"
+                ></v-divider>
+              </v-list>
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
@@ -94,8 +100,12 @@
 
 <script>
 import axios from 'axios'
+import Service from '@/components/Service'
 export default {
   name: 'Employee',
+  components: {
+    Service
+  },
   data () {
     return {
       sampleText: 'test',
