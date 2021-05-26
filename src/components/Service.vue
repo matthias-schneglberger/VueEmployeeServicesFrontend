@@ -2,7 +2,7 @@
     <v-list-item-content>
       <v-container style="padding: 0">
         <v-row>
-          <v-col cols="9" align-self="center">
+          <v-col cols="8" align-self="center">
             {{name}}
           </v-col>
           <v-col cols="1">
@@ -13,6 +13,11 @@
           <v-col cols="1">
             <v-btn icon @click="deleteService" >
               <v-icon>{{ show ? 'mdi-cancel' : 'mdi-cancel' }}</v-icon>
+            </v-btn>
+          </v-col>
+          <v-col cols="1">
+            <v-btn icon >
+              <v-icon>{{ icons.mdiPencil }}</v-icon>
             </v-btn>
           </v-col>
         </v-row>
@@ -58,12 +63,19 @@
 
 <script>
 import axios from 'axios'
-
+import {
+  mdiPencil,
+  mdiDelete
+} from '@mdi/js'
 export default {
   name: 'Service',
   data () {
     return {
-      show: false
+      show: false,
+      icons: {
+        mdiPencil,
+        mdiDelete
+      }
     }
   },
   props: {
@@ -71,17 +83,21 @@ export default {
     longitude: String,
     latitude: String,
     date: String,
-    serviceId: String
+    serviceId: String,
+    employeeId: String,
+    reloadMethod: Function
   },
   methods: {
     deleteService: function () {
       console.log('DELETE!')
-      axios.delete('http://localhost:9002/services/' + this.serviceId)
+      axios.delete('http://localhost:9001/services/' + this.serviceId)
         .then(response => this.handleDeleteResponse(response))
     },
     handleDeleteResponse: function (response) {
       if (response.status !== 200) {
         alert('Konnte den Service nicht löschen!')
+      } else {
+        this.reloadMethod()
       }
     }
   }

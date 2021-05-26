@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-list v-for="(employee, index) in employees" v-bind:key="employee.id">
-        <Employee :name="employee.name" :emp-id="employee.id" :latitude="employee.latitude" :longitude="employee.longitude"/>
+        <Employee :name="employee.name" :emp-id="employee.id" :latitude="employee.latitude" :longitude="employee.longitude" :employees="employees"/>
         <v-divider
           v-if="index < employees.length - 1"
           :key="index"
