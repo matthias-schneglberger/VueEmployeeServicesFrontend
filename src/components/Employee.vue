@@ -10,7 +10,7 @@
           <v-col cols="2">
             <v-btn
               icon
-              @click="show = !show"
+              @click="show = !show; showEdit = false"
               width="50%"
             >
               Details anzeigen
@@ -36,7 +36,7 @@
             </v-card-title>
             <v-card-text>
               <v-list v-for="(service, index) in services" v-bind:key="service.id">
-                <Service :name="service.name" :date="service.date" :latitude="service.latitude" :longitude="service.longitude" :service-id="service.id" :reload-method="reload"/>
+                <Service :employee-id="service.employeeId" :employees="employees" :name="service.name" :date="service.date" :latitude="service.latitude" :longitude="service.longitude" :service-id="service.id" :address="service.address" :reload-method="reload"/>
                 <v-divider
                   v-if="index < services.length - 1"
                   :key="index"
@@ -68,7 +68,9 @@
           <v-divider></v-divider>
 
           <v-card-text>
-            <div id="map">Here should be the map</div>
+            <div style="width: 100%" v-if="linkToGoogleMaps !== ''">
+              <iframe width="100%" height="300" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" :src="linkToGoogleMaps"></iframe>
+            </div>
             <v-simple-table>
               <template v-slot:default>
                 <thead>
@@ -91,12 +93,100 @@
                   <td>{{ longitude }}</td>
                 </tr>
                 <tr>
+                  <td>Adresse</td>
+                  <td>{{ address }}</td>
+                </tr>
+                <tr>
                   <td>Mitarbeiter - ID</td>
                   <td>{{ empId }}</td>
                 </tr>
                 </tbody>
               </template>
             </v-simple-table>
+            <v-btn
+              class="ma-2"
+              outlined
+              color="primary"
+              @click="deleteEmployee"
+            >
+              Mitarbeiter löschen
+            </v-btn>
+            <v-btn
+              class="ma-2"
+              outlined
+              color="primary"
+              @click="showEdit = true; show = false"
+            >
+              Mitarbeiter bearbeiten
+            </v-btn>
+          </v-card-text>
+        </div>
+      </v-expand-transition>
+      <v-expand-transition>
+        <div v-show="showEdit">
+          <v-divider></v-divider>
+
+          <v-card-text>
+            <v-simple-table>
+              <template v-slot:default>
+                <tbody>
+                <tr>
+                  <td>Name</td>
+                  <td>
+                    <v-text-field
+                      label="Name"
+                      :rules="rules"
+                      hide-details="auto"
+                      v-model="name"
+                    ></v-text-field>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Adresse</td>
+                  <td>
+                    <v-text-field
+                      label="Neue Adresse"
+                      :rules="rules"
+                      hide-details="auto"
+                      v-model="address"
+                    ></v-text-field>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Passwort</td>
+                  <td>
+                    <v-text-field
+                      hide-details="auto"
+                      label="Passwort"
+                      :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                      :rules="[rules.required, rules.min]"
+                      :type="showPassword ? 'text' : 'password'"
+                      hint="At least 8 characters"
+                      counter
+                      @click:append="showPassword = !showPassword"
+                      v-model="password"
+                    ></v-text-field>
+                  </td>
+                </tr>
+                </tbody>
+              </template>
+            </v-simple-table>
+            <v-btn
+              class="ma-2"
+              outlined
+              color="primary"
+              @click="editEmployee"
+            >
+              Speichern
+            </v-btn>
+            <v-btn
+              class="ma-2"
+              outlined
+              color="primary"
+              @click="showEdit = false; show = true; reloadMethod()"
+            >
+              Abbrechen
+            </v-btn>
           </v-card-text>
         </div>
       </v-expand-transition>
@@ -229,10 +319,12 @@
 
   </v-list-item-content>
 </template>
-
 <script>
 import axios from 'axios'
 import Service from '@/components/Service'
+import Vue from 'vue'
+import '../plugins/googleMap'
+// import google from 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCZVu8d3a4OUJMdGUcfOg5VH7fKoDMgG6w&callback=initMap&libraries=&v=weekly'
 export default {
   name: 'Employee',
   components: {
@@ -251,7 +343,15 @@ export default {
       newServiceTime: null,
       newServiceShowMenuTime: false,
       newServiceName: '',
-      newServiceAddress: ''
+      address: String,
+      newServiceAddress: '',
+      showEdit: false,
+      rules: {
+        required: value => !!value || 'Required.',
+        min: v => v.length >= 8 || 'Min 8 characters'
+      },
+      showPassword: false,
+      linkToGoogleMaps: 'https://www.google.com/maps/embed/v1/place?key=AIzaSyARLS2AunIVNbrHvZwSNnvGRJMiLGN-Ugo&maptype=satellite&center=' + this.latitude + ',' + this.longitude + '&q=' + this.latitude + ',' + this.longitude + '&zoom=18'
     }
   },
 
@@ -263,14 +363,19 @@ export default {
     empId: String,
     longitude: String,
     latitude: String,
-    address: String,
-    employees: []
+    password: String,
+    employees: [],
+    reloadMethod: Function
   },
   methods: {
     reload: function () {
       axios
         .get('http://localhost:9001/services/emp/' + this.empId)
         .then(response => (this.services = response.data))
+
+      axios
+        .get('http://localhost:9002/locationiq/addresses?longitude=' + this.longitude + '&latitude=' + this.latitude)
+        .then(response => (this.address = response.data.toString()))
 
       this.newServiceSelectedEmployee = this.empId
     },
@@ -299,8 +404,8 @@ export default {
         })
     },
     parseDateInString: function (dateObj) {
-      let day = dateObj.getDate();
-      let month = dateObj.getMonth();
+      let day = dateObj.getDate()
+      let month = dateObj.getMonth()
       month = month + 1
       if ((String(day)).length === 1) {
         day = '0' + day
@@ -310,6 +415,43 @@ export default {
       }
 
       return day + '.' + month + '.' + dateObj.getFullYear()
+    },
+    deleteEmployee: function () {
+      console.log('DELETE!')
+      axios.delete('http://localhost:9000/employees/' + this.empId)
+        .then(response => this.handleDeleteResponse(response))
+    },
+    handleDeleteResponse: function (response) {
+      if (response.status !== 200) {
+        alert('Konnte den Mitarbeiter nicht löschen!')
+      } else {
+        this.reloadMethod()
+      }
+    },
+    handleEditResponse: function (response) {
+      if (response.status !== 200) {
+        alert('Konnte den Mitarbeiter nicht bearbeiten!')
+      } else {
+        this.reloadMethod()
+        this.show = false
+        this.showEdit = false
+      }
+    },
+    editEmployee: function () {
+      console.log('Editing!')
+      const jsonStr = '' +
+        '{' +
+        '"name": "' + this.name + '",' +
+        '"employeeId": ' + this.empId + ',' +
+        '"address": "' + this.address + '",' +
+        '"password": "' + this.password + '"' +
+        '}'
+      axios.put('http://localhost:9000/employees/' + this.empId, jsonStr, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(response => this.handleEditResponse(response))
     }
   }
 }
